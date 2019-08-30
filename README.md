@@ -2,6 +2,8 @@ SysPropChart2
 ===
 
 
+[syspropchart2 as zip](https://github.com/dustractor/syspropchart2/releases/download/1.1/syspropchart2.zip)
+
 A property, in blender terms, is something that is editable in the interface.  If you have 'show python tooltips' enabled in blender's preferences, then you may have noticed these names when you hover over various parts of the interface.
 
 The original addon, System Property Chart, allowed for entering a string such as:
