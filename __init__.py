@@ -22,7 +22,7 @@ bl_info = {
         "indexed and keyed property access in addition to named "
         " attribute access.",
         "author":"dustractor@gmail.com",
-        "version":(1,0),
+        "version":(1,1),
         "blender":(2,80,0),
         "location":"3d Viewport -> UI -> Chart",
         "warning":"",
@@ -31,9 +31,11 @@ bl_info = {
         "category": "System"
         }
 
-import bpy,re
+import bpy,re,pathlib
 from bl_operators.presets import AddPresetBase
 from mathutils import Vector,Color
+
+
 def propexpr(obj,expr):
     if "." in expr:
         head,dot,rest = expr.partition(".")
@@ -85,7 +87,6 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
             r2,g2,b2 = attr2
             vec1 = Vector((r1,g1,b1))
             vec2 = Vector((r2,g2,b2))
-            print("vec1,vec2:",vec1,vec2)
             for n,ob in enumerate(obs[1:-1]):
                 fac = inc * (n+1)
                 objx,propx = propexpr(ob,expr)
@@ -105,12 +106,10 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
                 t = (*vec1.lerp(vec2,fac),avec1.lerp(avec2,fac)[0])
                 attrx[:] = t
         elif type(attr1) == float:
-            print("attr1,attr2:",attr1,attr2)
             for n,ob in enumerate(obs[1:-1]):
                 fac = inc * (n+1)
                 v1 = Vector((attr1,)*3)
                 v2 = Vector((attr2,)*3)
-                print("v1,v2:",v1,v2)
                 objx,propx = propexpr(ob,expr)
                 setattr(objx,propx,v1.lerp(v2,fac)[0])
         return {"FINISHED"}
@@ -170,10 +169,8 @@ class SYSPROP_PT_panel(bpy.types.Panel):
 def register():
     preset_paths = bpy.utils.preset_paths("sysprop_strings")
     if not len(preset_paths):
-        import pathlib
         scriptsdir = pathlib.Path(bpy.utils.user_resource("SCRIPTS"))
         presets = scriptsdir / "presets" / "sysprop_strings"
-        print(presets)
         presets.mkdir(exist_ok=True)
         t = "import bpy\nsysprop = bpy.context.window_manager.sysprop\n\nsysprop.value='%s'".__mod__
         preset_sysprop_strings = {
