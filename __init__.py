@@ -168,6 +168,23 @@ class SYSPROP_PT_panel(bpy.types.Panel):
 
 
 def register():
+    preset_paths = bpy.utils.preset_paths("sysprop_strings")
+    if not len(preset_paths):
+        import pathlib
+        scriptsdir = pathlib.Path(bpy.utils.user_resource("SCRIPTS"))
+        presets = scriptsdir / "presets" / "sysprop_strings"
+        print(presets)
+        presets.mkdir(exist_ok=True)
+        t = "import bpy\nsysprop = bpy.context.window_manager.sysprop\n\nsysprop.value='%s'".__mod__
+        preset_sysprop_strings = {
+                "mass":"particle_systems[0].settings.mass",
+                "diffuse_color":"data.materials[0].node_tree.nodes[\"Diffuse BSDF\"].inputs[0].default_value",
+                "location":"location"}
+        for k,v in preset_sysprop_strings.items():
+            with open(str(presets/(k+".py")),"w") as presetfile:
+                presetfile.write(t(v))
+
+
     list(map(bpy.utils.register_class,_()))
     bpy.types.WindowManager.sysprop = bpy.props.PointerProperty(type=SysProp)
 
