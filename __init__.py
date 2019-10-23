@@ -171,7 +171,7 @@ def register():
     if not len(preset_paths):
         scriptsdir = pathlib.Path(bpy.utils.user_resource("SCRIPTS"))
         presets = scriptsdir / "presets" / "sysprop_strings"
-        presets.mkdir(exist_ok=True)
+        presets.mkdir(parents=True,exist_ok=True)
         t = "import bpy\nsysprop = bpy.context.window_manager.sysprop\n\nsysprop.value='%s'".__mod__
         preset_sysprop_strings = {
                 "mass":"particle_systems[0].settings.mass",
