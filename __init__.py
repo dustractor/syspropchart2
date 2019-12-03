@@ -117,7 +117,7 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
 
 @_
 class SysProp(bpy.types.PropertyGroup):
-    value: bpy.props.StringProperty(default="name,data.name,location,data.materials[0].node_tree.nodes['Diffuse BSDF'].inputs[0].default_value")
+    value: bpy.props.StringProperty(default="name,location")
 
 
 @_
@@ -176,7 +176,9 @@ def register():
         preset_sysprop_strings = {
                 "mass":"particle_systems[0].settings.mass",
                 "diffuse_color":"data.materials[0].node_tree.nodes[\"Diffuse BSDF\"].inputs[0].default_value",
-                "location":"location"}
+                "location":"location",
+                "light_color":"data.color"
+        }
         for k,v in preset_sysprop_strings.items():
             with open(str(presets/(k+".py")),"w") as presetfile:
                 presetfile.write(t(v))
