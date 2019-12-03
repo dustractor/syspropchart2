@@ -11,7 +11,7 @@ Use commas in the property string as a delimiter so you can expose multiple prop
 When objects of multiple types are selected, there may be failures in the algorithm to display, if a property is referenced that does not belong to all type of objects.  So for example, objects have a 'color' property that is not usually the one that is wanted.  'data.color' is more likely in the case of a light, for example.  (I'm not sure what object 'color' even does in that case...)  When referencing to display the color of selected lights, by putting 'data.color' in the syspropchart box, having mesh objects selected then gets you errors in the console about rna_uiItemR: property not found: Mesh.color. This is to be expected.
 
 
-[syspropchart2 as zip](https://github.com/dustractor/syspropchart2/releases/download/1.1/syspropchart2.zip)
+[syspropchart2 as zip](https://github.com/dustractor/syspropchart2/releases/download/1.2/syspropchart2.zip)
 
 A property, in blender terms, is something that is editable in the interface.  If you have 'show python tooltips' enabled in blender's preferences, then you may have noticed these names when you hover over various parts of the interface.
 
