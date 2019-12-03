@@ -1,6 +1,8 @@
 SysPropChart2
 ===
 
+v 1.2 dec 3 2019
+
 
 This addon allows you to make presets for the properties you need to change or view often, and it lets you view the properties of multiple selected objects.
 

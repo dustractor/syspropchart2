@@ -22,7 +22,7 @@ bl_info = {
         "indexed and keyed property access in addition to named "
         " attribute access.",
         "author":"dustractor@gmail.com",
-        "version":(1,1),
+        "version":(1,2),
         "blender":(2,80,0),
         "location":"3d Viewport -> UI -> Chart",
         "warning":"",
