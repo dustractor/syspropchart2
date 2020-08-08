@@ -112,6 +112,11 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
                 v2 = Vector((attr2,)*3)
                 objx,propx = propexpr(ob,expr)
                 setattr(objx,propx,v1.lerp(v2,fac)[0])
+        elif type(attr1) == bpy.types.Object:
+            for n,ob in enumerate(obs):
+                objx,propx = propexpr(ob,expr)
+                setattr(objx,propx,attr1)
+            print("I OBJECT")
         return {"FINISHED"}
 
 
