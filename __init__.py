@@ -30,17 +30,27 @@ bl_info = {
         "tracker_url":"",
         "category": "System"
         }
-
-import bpy,re,pathlib
+from bpy.types import (
+    Panel,Operator,bpy_prop_array,Object,Menu,PropertyGroup,WindowManager
+)
+from bpy.utils import (
+    register_class,unregister_class,preset_paths,user_resource
+)
+from bpy.props import (
+    StringProperty,PointerProperty
+)
+from pathlib import Path
+from re import match
 from bl_operators.presets import AddPresetBase
-from mathutils import Vector,Color
-
+from bl_ui.utils import PresetPanel
+from mathutils import Vector,Color,Euler
+from shutil import copy2
 
 def propexpr(obj,expr):
     if "." in expr:
         head,dot,rest = expr.partition(".")
-        indexed = re.match(r"(\w*)\[(\d*)\]$",head)
-        keyed = re.match(r"(\w*)\[[\"'](.*)[\"']\]$",head)
+        indexed = match(r"(\w*)\[(\d*)\]$",head)
+        keyed = match(r"(\w*)\[[\"'](.*)[\"']\]$",head)
         if indexed:
             obj = getattr(obj,indexed.group(1)).__getitem__(int(indexed.group(2)))
         elif keyed:
@@ -58,11 +68,11 @@ def _(c=None,r=[]):
 
 
 @_
-class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
+class SYSPROP_OT_sysprop_interp(Operator):
     bl_idname = "sysprop.interp"
     bl_label = "Interpolate"
     bl_options = {"INTERNAL"}
-    expr: bpy.props.StringProperty(default="")
+    expr: StringProperty(default="")
     @classmethod
     def poll(self,context):
         return len(context.selected_objects) > 2
@@ -76,12 +86,21 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
         obj2,prop2 = propexpr(last,expr)
         attr1 = getattr(obj1,prop1)
         attr2 = getattr(obj2,prop2)
+        print("type(attr1):",type(attr1))
         if isinstance(attr1,Vector):
             for n,ob in enumerate(obs[1:-1]):
                 fac = inc * (n+1)
                 objx,propx = propexpr(ob,expr)
                 attrx = getattr(objx,propx)
                 attrx[:] = attr1.lerp(attr2,fac)
+        elif isinstance(attr1,Euler):
+            for n,ob in enumerate(obs[1:-1]):
+                fac = inc * (n+1)
+                objx,propx = propexpr(ob,expr)
+                attrx = getattr(objx,propx)
+                qa = attr1.to_quaternion()
+                qb = attr2.to_quaternion()
+                attrx[:] = qa.slerp(qb,fac).to_euler()
         elif isinstance(attr1,Color):
             r1,g1,b1 = attr1
             r2,g2,b2 = attr2
@@ -92,7 +111,7 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
                 objx,propx = propexpr(ob,expr)
                 attrx = getattr(objx,propx)
                 attrx[:] = vec1.lerp(vec2,fac)
-        elif isinstance(attr1,bpy.types.bpy_prop_array) and len(attr1)==4:
+        elif isinstance(attr1,bpy_prop_array) and len(attr1)==4:
             r1,g1,b1,a1 = attr1
             r2,g2,b2,a2 = attr2
             vec1 = Vector((r1,g1,b1))
@@ -112,7 +131,7 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
                 v2 = Vector((attr2,)*3)
                 objx,propx = propexpr(ob,expr)
                 setattr(objx,propx,v1.lerp(v2,fac)[0])
-        elif type(attr1) == bpy.types.Object:
+        elif type(attr1) == Object:
             for n,ob in enumerate(obs):
                 objx,propx = propexpr(ob,expr)
                 setattr(objx,propx,attr1)
@@ -121,40 +140,48 @@ class SYSPROP_OT_sysprop_interp(bpy.types.Operator):
 
 
 @_
-class SysProp(bpy.types.PropertyGroup):
-    value: bpy.props.StringProperty(default="name,location")
+class SysProp(PropertyGroup):
+    value: StringProperty(default="name,location")
 
 
 @_
-class SYSPROP_MT_preset_menu(bpy.types.Menu):
+class SYSPROP_MT_preset_menu(Menu):
     bl_label = "sysprop presets"
     preset_subdir = "sysprop_strings"
     preset_operator = "script.execute_preset"
-    draw = bpy.types.Menu.draw_preset
+    draw = Menu.draw_preset
 
 
 @_
-class SYSPROP_OT_sysprop_preset_add(AddPresetBase,bpy.types.Operator):
+class SYSPROP_OT_sysprop_preset_add(AddPresetBase,Operator):
     bl_idname = "sysprop.add_preset"
     bl_label = "add sysprop preset"
     preset_menu = "SYSPROP_MT_preset_menu"
     preset_subdir = "sysprop_strings"
-    preset_defines = [ "sysprop = bpy.context.window_manager.sysprop" ]
+    preset_defines = ["sysprop = bpy.context.window_manager.sysprop"]
     preset_values = ["sysprop.value"]
 
+@_
+class SYSPROP_PT_presets(PresetPanel,Panel):
+    bl_label = "SysPropChart2 Presets"
+    preset_subdir = "sysprop_strings"
+    preset_operator = "script.execute_preset"
+    preset_add_operator = "sysprop.add_preset"
 
 @_
-class SYSPROP_PT_panel(bpy.types.Panel):
-    bl_label = "sysprop"
+class SYSPROP_PT_panel(Panel):
+    bl_label = "SysPropChart2"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Chart"
-    def draw_header(self,context):
-        layout = self.layout
-        layout.menu("SYSPROP_MT_preset_menu")
-        row = self.layout.box().row(align=True)
-        row.operator("sysprop.add_preset",text="",icon="PLUS")
-        row.operator("sysprop.add_preset",text="",icon="TRASH").remove_active=True
+    def draw_header_preset(self,context):
+        SYSPROP_PT_presets.draw_panel_header(self.layout)
+    # def draw_header(self,context):
+    #     layout = self.layout
+    #     layout.menu("SYSPROP_MT_preset_menu")
+    #     row = self.layout.box().row(align=True)
+    #     row.operator("sysprop.add_preset",text="",icon="PLUS")
+    #     row.operator("sysprop.add_preset",text="",icon="TRASH").remove_active=True
     def draw(self,context):
         sysprop_string = context.window_manager.sysprop.value
         propstrings = sysprop_string.split(",")
@@ -170,29 +197,24 @@ class SYSPROP_PT_panel(bpy.types.Panel):
             for expr in propstrings:
                 cols[expr].row(align=True).prop(*propexpr(ob,expr),text="")
 
+def deploy_presets():
+    if not len(preset_paths("sysprop_strings")):
+        scriptsdir = Path(user_resource("SCRIPTS"))
+        presetsdir = scriptsdir / "presets" / "sysprop_strings"
+        presetsdir.mkdir(parents=True,exist_ok=True)
+        presetsdir = str(presetsdir)
+        print(f"[{__package__}]deploying presets to {presetsdir}",end="...")
+        builtin_presets = Path(__file__).parent / "presets"
+        for presetfile in map(str,builtin_presets.iterdir()):
+            copy2(presetfile,presetsdir)
+        print("OK")
 
 def register():
-    preset_paths = bpy.utils.preset_paths("sysprop_strings")
-    if not len(preset_paths):
-        scriptsdir = pathlib.Path(bpy.utils.user_resource("SCRIPTS"))
-        presets = scriptsdir / "presets" / "sysprop_strings"
-        presets.mkdir(parents=True,exist_ok=True)
-        t = "import bpy\nsysprop = bpy.context.window_manager.sysprop\n\nsysprop.value='%s'".__mod__
-        preset_sysprop_strings = {
-                "mass":"particle_systems[0].settings.mass",
-                "diffuse_color":"data.materials[0].node_tree.nodes[\"Diffuse BSDF\"].inputs[0].default_value",
-                "location":"location",
-                "light_color":"data.color"
-        }
-        for k,v in preset_sysprop_strings.items():
-            with open(str(presets/(k+".py")),"w") as presetfile:
-                presetfile.write(t(v))
-
-
-    list(map(bpy.utils.register_class,_()))
-    bpy.types.WindowManager.sysprop = bpy.props.PointerProperty(type=SysProp)
+    deploy_presets()
+    list(map(register_class,_()))
+    WindowManager.sysprop = PointerProperty(type=SysProp)
 
 def unregister():
-    del bpy.types.WindowManager.sysprop
-    list(map(bpy.utils.unregister_class,_()))
+    del WindowManager.sysprop
+    list(map(unregister_class,_()))
 
