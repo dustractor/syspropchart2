@@ -31,13 +31,14 @@ bl_info = {
         "category": "System"
         }
 from bpy.types import (
-    Panel,Operator,bpy_prop_array,Object,Menu,PropertyGroup,WindowManager
+    Panel,Operator,bpy_prop_array,Object,Menu,PropertyGroup,WindowManager,
+    AddonPreferences
 )
 from bpy.utils import (
     register_class,unregister_class,preset_paths,user_resource
 )
 from bpy.props import (
-    StringProperty,PointerProperty
+    StringProperty,PointerProperty,EnumProperty
 )
 from pathlib import Path
 from re import match
@@ -141,7 +142,11 @@ class SYSPROP_OT_sysprop_interp(Operator):
 
 @_
 class SysProp(PropertyGroup):
-    value: StringProperty(default="name,location")
+    value: StringProperty(default="location,rotation_euler,scale",
+                          name="Names of properties of selected objects",
+                          description="Commas can be used to separate"
+                                      " multiple datapath items.")
+
 
 
 @_
@@ -168,6 +173,11 @@ class SYSPROP_PT_presets(PresetPanel,Panel):
     preset_operator = "script.execute_preset"
     preset_add_operator = "sysprop.add_preset"
 
+
+def interp_op(layout,expr):
+    op = layout.row(align=True).operator(
+        "sysprop.interp",text=f"∀{expr}",icon="HANDLETYPE_AUTO_VEC")
+    op.expr = expr
 @_
 class SYSPROP_PT_panel(Panel):
     bl_label = "SysPropChart2"
@@ -176,26 +186,56 @@ class SYSPROP_PT_panel(Panel):
     bl_category = "Chart"
     def draw_header_preset(self,context):
         SYSPROP_PT_presets.draw_panel_header(self.layout)
-    # def draw_header(self,context):
-    #     layout = self.layout
-    #     layout.menu("SYSPROP_MT_preset_menu")
-    #     row = self.layout.box().row(align=True)
-    #     row.operator("sysprop.add_preset",text="",icon="PLUS")
-    #     row.operator("sysprop.add_preset",text="",icon="TRASH").remove_active=True
     def draw(self,context):
+        prefs = context.preferences.addons[__package__].preferences
+        displaystyle = prefs.displaystyle
         sysprop_string = context.window_manager.sysprop.value
         propstrings = sysprop_string.split(",")
         layout = self.layout
         box = layout.box()
         box.prop(context.window_manager.sysprop,"value",text="",icon="LIGHTPROBE_GRID")
         box.label(text=sysprop_string)
-        cols = {expr:layout.column(align=True) for expr in propstrings}
-        for expr in propstrings:
-            op = cols[expr].row(align=True).operator("sysprop.interp",text=expr,icon="HANDLETYPE_AUTO_VEC")
-            op.expr = expr
-        for ob in context.selected_objects:
+        row = layout.row(align=True)
+        row.prop_enum(prefs,"displaystyle","LIST",text="",icon="ALIGN_JUSTIFY")
+        row.prop_enum(prefs,"displaystyle","LISTS",text="",icon="LINENUMBERS_OFF")
+        row.prop_enum(prefs,"displaystyle","CHART",text="",icon="VIEW_ORTHO")
+        if displaystyle == "LIST":
+            col = layout.column(align=True)
+            for ob in context.selected_objects:
+                for expr in propstrings:
+                    col.row(align=True).prop(*propexpr(ob,expr),text="")
+            layout.separator()
             for expr in propstrings:
-                cols[expr].row(align=True).prop(*propexpr(ob,expr),text="")
+                interp_op(layout,expr)
+
+        elif displaystyle == "LISTS":
+            cols = {expr:layout.column(align=True) for expr in propstrings}
+            for expr in propstrings:
+                interp_op(cols[expr],expr)
+            for ob in context.selected_objects:
+                for expr in propstrings:
+                    cols[expr].row(align=True).prop(*propexpr(ob,expr),text="")
+
+        elif displaystyle == "CHART":
+            row = layout.row(align=True)
+            cols = {expr:row.column(align=True) for expr in propstrings}
+            for expr in propstrings:
+                interp_op(cols[expr],expr)
+            for ob in context.selected_objects:
+                for expr in propstrings:
+                    cols[expr].row(align=True).prop(*propexpr(ob,expr),text="")
+
+        else:
+            print("display style:",displaystyle,"not implemented")
+@_
+class SysPropChart2Prefs(AddonPreferences):
+    bl_idname = __package__
+    displaystyle: EnumProperty(
+        items=((_.upper(),_,_.title()) for _ in "list lists chart".split()),
+        default="LIST")
+    def draw(self,context):
+        self.layout.prop(self,"displaystyle")
+        self.layout.label(text=self.displaystyle)
 
 def deploy_presets():
     if not len(preset_paths("sysprop_strings")):
