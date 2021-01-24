@@ -1,4 +1,7 @@
-SysPropChart2
+SysPropChart2 HAS BEEN RENAMED TO just 'propchart'
+
+https://github.com/dustractor/propchart
+
 ===
 
 v 1.2 dec 3 2019
